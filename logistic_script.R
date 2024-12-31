@@ -77,3 +77,27 @@ data$ca <- as.factor(data$ca)
 # thal has NA values but should be categorical
 data$thal <- as.integer(data$thal)
 data$thal <- as.factor(data$thal)
+
+# change hd column to 0 for healthy and 1 for unhealthy with ifelse
+data$hd <- ifelse(test = data$hd == 0, yes = 'Healthy', no = 'Unhealthy')
+
+# number of missing rows in ca and thal - only 6 so they can be removed
+nrow(data[is.na(data$ca) | is.na(data$thal),])
+data[is.na(data$ca) | is.na(data$thal),]
+
+# we want all columns but we do not want the rows where the values are NA
+data <- data[!(is.na(data$ca) | is.na(data$thal)),]
+
+# create a table for sex and heart disease
+xtabs(~ hd + sex, data = data)
+
+# table for cp
+xtabs(~ hd + cp, data = data)
+
+# table for fbs
+xtabs(~ hd + fbs, data = data)
+
+# table for restecg - only 4 records with 1 for restecg
+xtabs(~ hd + restecg, data = data)
+
+

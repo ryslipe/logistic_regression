@@ -100,4 +100,45 @@ xtabs(~ hd + fbs, data = data)
 # table for restecg - only 4 records with 1 for restecg
 xtabs(~ hd + restecg, data = data)
 
+# rest of categorical variables
+xtabs(~ hd + exang, data = data)
+xtabs(~ hd + slope, data = data)
+xtabs(~ hd + ca, data = data)
+xtabs(~ hd + thal, data = data)
+
+
+
+data$hd <- as.factor(data$hd)
+
+
+# only using sex as the predictor - family = binomial means logistic regression
+logistic <- glm(hd ~ sex, data = data, family = "binomial")
+summary(logistic)
+
+# compute R2
+# log likelihood of null deviance
+ll_null <- logistic$null.deviance / -2
+
+# log likelihood of proposed
+ll_proposed <- logistic$deviance / -2
+
+# compute R squared
+r_squared <- (ll_null - ll_proposed) / ll_null
+
+# model that uses all variables
+logistic <- glm(hd ~ ., data = data, family = 'binomial')
+summary(logistic)
+
+# log likelihood of null deviance
+ll_null <- logistic$null.deviance / -2
+
+# log likelihood of proposed
+ll_proposed <- logistic$deviance / -2
+
+# compute R squared
+r_squared <- (ll_null - ll_proposed) / ll_null
+
+# use equation for p-value - we want upper tail so 1 - pchisq
+# pchisq gives the area up til our test value we want the rest
+p_val = 1 - pchisq(2*(ll_proposed - ll_null), df = (length(logistic$coefficients)- 1))
 

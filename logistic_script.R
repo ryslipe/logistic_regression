@@ -88,19 +88,11 @@ data[is.na(data$ca) | is.na(data$thal),]
 # we want all columns but we do not want the rows where the values are NA
 data <- data[!(is.na(data$ca) | is.na(data$thal)),]
 
-# create a table for sex and heart disease
+# create a tables for heart disease and each variable
 xtabs(~ hd + sex, data = data)
-
-# table for cp
 xtabs(~ hd + cp, data = data)
-
-# table for fbs
 xtabs(~ hd + fbs, data = data)
-
-# table for restecg - only 4 records with 1 for restecg
 xtabs(~ hd + restecg, data = data)
-
-# rest of categorical variables
 xtabs(~ hd + exang, data = data)
 xtabs(~ hd + slope, data = data)
 xtabs(~ hd + ca, data = data)
@@ -110,6 +102,9 @@ xtabs(~ hd + thal, data = data)
 
 data$hd <- as.factor(data$hd)
 
+################################################################################
+# Modeling
+################################################################################
 
 # only using sex as the predictor - family = binomial means logistic regression
 logistic <- glm(hd ~ sex, data = data, family = "binomial")
@@ -139,6 +134,6 @@ ll_proposed <- logistic$deviance / -2
 r_squared <- (ll_null - ll_proposed) / ll_null
 
 # use equation for p-value - we want upper tail so 1 - pchisq
-# pchisq gives the area up til our test value we want the rest
+# pchisq gives the area up til our test value but we want the rest so we use 1 - pchisq
 p_val = 1 - pchisq(2*(ll_proposed - ll_null), df = (length(logistic$coefficients)- 1))
 

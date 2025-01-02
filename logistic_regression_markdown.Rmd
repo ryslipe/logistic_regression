@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Logistic Regression
 
-First we will upload our data and preprocess it for modeling. At first glance, we can see that the column names are not listed. We can get these names from the webstie and make a variable dictionary to store the column names and what they mean.
+First we will upload our data and preprocess it for modeling. At first glance, we can see that the column names are not listed. We can get these names from the website and make a variable dictionary to store the column names and what they mean.
 
 ```{r initial}
 # add libraries we will be using
@@ -247,4 +247,52 @@ Now, we will create a model using all variables.
 # fit the model
 logistic <- glm(hd ~ ., family = 'binomial', data = data)
 summary(logistic)
+```
+
+The Akaike Information Criterion (AIC) value for this model is lower than our baseline model which tells us that adding the extra parameters results in a better fit without being overly complex. The formula for AIC is: $$ \text{AIC} = 2k - 2 \ln(L) $$.
+K is equal to the number of parameters and L is the likelihood of the proposed model. This formula penalizes models with a high number of parameters in the first portion (2k) and subtracts that from the goodness of fit. A high AIC tells us that the model is either too complex or does not fit the data well. 
+
+Let's get the LL(null) and LL(proposed) from this new model and compute the R-squared.
+```{r new r-squared}
+
+# calculate the log likelihood of the null model
+ll_null <- logistic$null.deviance / -2
+ll_proposed <- logistic$deviance / -2
+
+# calculate the r squared
+r_squared = 1 - (ll_proposed / ll_null)
+r_squared
+
+```
+
+The R-squared from this model is roughly 0.55 which is 0.45 larger than our original model. This means that our first model was able to explain 5% of the variance and the new model is able to explain 55% of the variance making it a better model. Since we added more predictor variables we can interpret this as the new variables are able to explain the variability. 
+
+Just as we did with the simple model we will do a log likelihood ratio test to see if this model is statistically different from the null model. The p-value is so small that R has labeled it as 0 meaning this model fit is statistically significant in relation to the null model and means the added predictors are significant in helping with predictions. 
+
+```{r new p}
+# get the test stat from chi-squared and calc upper tail
+1 - pchisq(2*(ll_proposed - ll_null), df = length(logistic$coefficients - 1))
+```
+
+#### Visualizing Performance
+
+The visualization of the model shows that the model does a pretty good job of predicting heart disease for patients. Most of the pink colored data is below the 50% threshold and most of the blue data is above the 50% decision threshold. The colors are the actual outcomes and the y-axis label is the probability of having heart disease from our model so any point below the 50% mark would be labeled pink by our model and any point above the 50% mark would be labeled blue. 
+```{r performance}
+# dataframe of predicted probabilities
+predictions <- data.frame(
+  proba = logistic$fitted.values,
+  hd = data$hd)
+
+# sort them by rows but don't change columns - ascending order for graphing
+predictions <- predictions[order(predictions$proba, decreasing = FALSE),]
+
+# add a column named rank to be used as x-axis
+predictions$rank <- 1:nrow(predictions)
+
+ggplot(data=predictions, aes(x=rank, y=proba)) +
+  geom_point(aes(color=hd), alpha=1, shape=4, stroke=2) +
+  xlab("Index") +
+  ylab("Predicted Probability of Getting Heart Disease") +
+  ggtitle("Predicted Probability by Index")
+
 ```

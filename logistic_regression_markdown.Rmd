@@ -44,10 +44,6 @@ head(data)
 | thal     | short of thalium heart scan 3 = normal (no cold spots), 6 = fixed defect (cold spots during rest and exercise) 7 = reversible defect (when cold spots only appear during exercise) |
 | hd       | target variable heart disease. 0 for healthy 1 for unhealthy                                                                                                                       |
 
-## Including Plots
-
-You can also embed plots, for example:
-
 ```{r cols}
 # add column names listed on website
 colnames(data) <- c(

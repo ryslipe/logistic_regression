@@ -1,0 +1,254 @@
+---
+title: "Logistic Regression in R"
+author: "Ryan Slipe"
+date: "2025-01-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Logistic Regression
+
+First we will upload our data and preprocess it for modeling. At first glance, we can see that the column names are not listed. We can get these names from the webstie and make a variable dictionary to store the column names and what they mean.
+
+```{r initial}
+# add libraries we will be using
+library(ggplot2)
+library(cowplot)
+
+# read in the data
+data <- read.csv('processed.cleveland.data', header = FALSE)
+
+# first 6 rows - no column names listed
+head(data)
+```
+
+
+## Variable Dictionary
+| variable | definition
+|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| age      | age of patient                                                                                                                                                                     |
+| sex      | 0 female 1 male                                                                                                                                                                    |
+| cp       | chest pain- 1 = typical angina, 2 = atypical angina, 3 = non-anginal pain, 4 = asymptomatic                                                                                        |
+| trestbps | resting blood pressure (in mm Hg)                                                                                                                                                  |
+| chol     | serum cholestoral in mg/dl                                                                                                                                                         |
+| fbs      | fasting blood sugar if less than 120 mg/dl 1 = TRUE, 0 = FALSE                                                                                                                     |
+| restecg  | resting electrocardiographic results 1 = normal, 2 = having ST-T wave abnormality 3 = showing probable or definite left ventricular hypertrophy                                    |
+| thalach  | maximum heart rate achieved                                                                                                                                                        |
+| exang    | exercise induced angina, 1 = yes, 0 = no                                                                                                                                           |
+| oldpeak  | ST depression induced by exercise relative to rest                                                                                                                                 |
+| slope    | the slope of the peak exercise ST segment 1 = upsloping, 2 = flat, 3 = downsloping                                                                                                 |
+| ca       | number of major vessels (0-3) colored by fluoroscopy                                                                                                                               |
+| thal     | short of thalium heart scan 3 = normal (no cold spots), 6 = fixed defect (cold spots during rest and exercise) 7 = reversible defect (when cold spots only appear during exercise) |
+| hd       | target variable heart disease. 0 for healthy 1 for unhealthy                                                                                                                       |
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r cols}
+# add column names listed on website
+colnames(data) <- c(
+  "age",
+  "sex",
+  "cp",
+  "trestbps", 
+  "chol",
+  "fbs",  
+  "restecg", 
+  "thalach", 
+  "exang",   
+  "oldpeak",
+  "slope", 
+  "ca",
+  "thal",
+  "hd"
+)
+
+# view data structure
+str(data)
+```
+
+The structure of the data shows that some of the variables do not match the data type listed on the UCI Repository. We will fix these now.
+
+```{r processing}
+# change sex category to 0 - Female and 1 - Male
+data[data$sex == 0,]$sex <- 'F'
+data[data$sex == 1,]$sex <- 'M'
+
+# change sex column to categorical
+data$sex <- as.factor(data$sex)
+
+# cp, rbs, restecg, exang, and slope are all supposed to be factors
+data$cp <- as.factor(data$cp)
+data$fbs <- as.factor(data$fbs)
+data$exang <- as.factor(data$exang)
+data$slope <- as.factor(data$slope)
+
+# ca is also categorical but has question marks so change this - remember NA values exist here 
+data$ca <- as.integer(data$ca)
+data$ca <- as.factor(data$ca)
+
+# thal has NA values but should be categorical
+data$thal <- as.integer(data$thal)
+data$thal <- as.factor(data$thal)
+
+# change hd column to 0 for healthy and 1 for unhealthy with ifelse
+data$hd <- ifelse(test = data$hd == 0, yes = 'Healthy', no = 'Unhealthy')
+```
+
+There are only 6 rows with NA values so we will remove them by filtering the data.
+```{r remove rows}
+# number of missing rows in ca and thal - only 6 so they can be removed
+nrow(data[is.na(data$ca) | is.na(data$thal),])
+# view these rows
+data[is.na(data$ca) | is.na(data$thal),]
+
+# we want all columns but we do not want the rows where the values are NA
+data <- data[!(is.na(data$ca) | is.na(data$thal)),]
+```
+
+Now we check to see if each categorical variable is represented by each group to make sure that we can use them all. There may be an issue with **restecg** since only 4 observations are represented as level 1, but we will continue forward with using the variable.
+
+```{r xtabs}
+# create a tables for heart disease and each variable
+xtabs(~ hd + sex, data = data)
+xtabs(~ hd + cp, data = data)
+xtabs(~ hd + fbs, data = data)
+xtabs(~ hd + restecg, data = data)
+xtabs(~ hd + exang, data = data)
+xtabs(~ hd + slope, data = data)
+xtabs(~ hd + ca, data = data)
+xtabs(~ hd + thal, data = data)
+xtabs(~ hd + restecg, data = data)
+```
+
+## Our First Model
+
+```{r fitst model}
+# make predictor variable a factor
+data$hd <- as.factor(data$hd)
+
+# create model
+logistic <- glm(hd ~ sex, data = data, family = 'binomial')
+# view results
+summary(logistic)
+```
+
+#### Deviance Residuals
+Deviance residuals help tell us how good a model fits the data. These values quantify how well the predictions match the actual data. If a value is above the sigmoid it is positive and if it is below the sigmoid it is negative. Large values of a single deviance can tell us that they may be outliers and the deviance residuals reported should be centered close to 0 and roughly symmetrical which is what we see in the results below:
+
+Deviance Residuals: 
+
+    Min          1Q         Median          3Q          Max  
+    
+    -1.2765     -1.2765     -0.7768       1.0815      1.6404  
+    
+#### Coefficients
+Since we are only using **sex** as a predictor of **hd**, the intercept is the log(odds) that a female will have heart disease. Since this is a negative value it tells us that females are healthier than males in this data set. In R the factors are ordered alphabetically which is how we know this. 
+
+The coefficient **sexM** is a log(odds ratio). The odds ratio is the odds(Male Unhealthy) over odds(Female Unhealthy). It tells us that the odds of a male being unhealthy are 1.27 times greater than that of a female on a log scale.
+Coefficients:
+
+                Estimate Std. Error z value Pr(>|z|)    
+    (Intercept)  -1.0438     0.2326  -4.488 7.18e-06 ***
+    sexM          1.2737     0.2725   4.674 2.95e-06 ***
+
+
+We can confirm these numbers manually. Using the xtabs table from above we see that there are 25 unhealthy females and 71 healthy females. We also see that there are 112 unhealthy males and 89 healthy males. 
+
+```{r odds ratios}
+# odds of a female being unhealthy
+female_log_odds <- log(25 / 71)
+female_log_odds
+
+# odds ratio unhealthy male unhealthy female
+male_odds_ratio <- log((112 / 89) / (25 / 71))
+male_odds_ratio
+```
+
+## Finding R-Squared for Logistic Regression
+
+To find the R-squared value for logistic regression we need the log-likelihood of the null model, saturated model, and proposed model but the saturated model is 0 so we can remove that from our calculations. The LL(null) tells us how well the null model fits the data. The null model is a poor model with no predictors. It is similar to the Sum of Squares of the Mean for linear regression. This number should be a larger negative number than the LL(proposed) since it tells us about fitting the data. Since we have the null deviance we can use this to find the LL(null). We will also be using the LL(proposed) model which is the log likelihood of our fitted model. The log likelihood of the proposed model tells us how well this model fits the data and will be compared to the LL(null). It should be a small negative number closer to 0 than the LL(null).
+
+We are given the Null Deviance and the Residual Deviance so we can get the LL(null) model by dividing the null deviance by -2. The LL(proposed) can be found by dividing the residual deviance by -2. 
+
+ Null Deviance
+$$
+\text{Null deviance} = 2 \times (\text{LogLikelihood(saturated model)} - \text{LogLikelihood(null model)}) \\
+                     = -2 \times \text{LogLikelihood(null model)}
+$$
+
+ Residual Deviance
+$$
+\text{Residual deviance} = 2 \times (\text{LogLikelihood(saturated model)} - \text{LogLikelihood(proposed model)}) \\
+                         = -2 \times \text{LogLikelihood(proposed model)}
+$$
+
+### McFadden's Psuedo R-Squared
+
+McFadden's Pseudo R-squared is calculated as: $$ R^2_{McFadden} = 1 - \frac{\text{LogLikelihood(Proposed)}}{\text{LogLikelihood(Null)}} $$
+
+This formula ensures that the range is from 0 to 1 just like linear regression r-squared values. It is the proportion of the log likelihood explained by the proposed model relative to the null model, meaning a larger number means a better fit. It can be thought of as a measure of improvement of fit the proposed model has on the null model, or the amount of uncertainty in the null model that has been accounted for in the proposed model.
+```{r rsquared}
+# calculate the log likelihood of the null model
+ll_null <- logistic$null.deviance / -2
+ll_proposed <- logistic$deviance / -2
+
+# calculate the r squared
+r_squared = 1 - (ll_proposed / ll_null)
+r_squared
+```
+
+### Likelihood Ratio Test
+
+The likelihood ratio test is another goodness-of-fit test that we can use for logistic regression that is similar to a p-value for an R-squared value in linear regression. This is because the likelihood ratio test compares the fit of the null model and the proposed model to see if they are significantly different and we used them to determine the pseudo r-squared. 
+$$\chi^2 = 2 \times (\text{LogLikelihood(Proposed)} - \text{LogLikelihood(Null)})$$
+
+The resulting chi-squared value is used to find if the two models are significantly different or not. The degrees of freedom is the difference in the number of parameters in the two models (LL(null) has 1.) We can obtain the degrees of freedom right from the model by getting the length of **logistic$coefficients** - 1. 
+```{r likelihood ratio test}
+# pchisq gives the area up til our test value but we want the rest so we use 1 - pchisq
+p_val = 1 - pchisq(2*(ll_proposed - ll_null), df = (length(logistic$coefficients)- 1))
+p_val
+```
+
+The results are interesting. We see a very small R-squared value which tells us that our model does not explain much more variability than that of the null model (only %5). However, the p-value in the likelihood ratio test is less than 0.05 which tells us that the proposed model improvement is statistically significant to the null model. We can interpret this as the model not fitting the overall data well since it only captures %5 of the variability, but the added **sex** coefficient did improve the model in a statistically significant way meaning we are on the right track but should try to find more variables that can explain the variance.
+
+### Graphing the Data
+
+Now we can see how our model performs on the given data. For this very simple model we will only have two possible probabilities since there is only 1 variable with two possible outcomes. There is the probability of a female having heart disease and the probability of a male having heart disease. 
+
+
+```{r model proba}
+predictions <- data.frame(
+  proba <- logistic$fitted.values,
+  sex <- data$sex)
+head(predictions)
+```
+
+If we plot this data we will not see the normal s-curve for logistic regression because we are dealing with a binary predictor variable.
+
+```{r plot}
+# plot 
+ggplot(data=predictions, aes(x=sex, y=proba)) +
+  geom_point(aes(color=sex), size=5) +
+  xlab("Sex") +
+  ylab("Predicted probability of getting heart disease")
+ 
+
+# summary
+xtabs(~ proba + sex, data=predictions)
+```
+
+
+#### Complex Model
+
+Now, we will create a model using all variables.
+
+```{r all vars}
+# fit the model
+logistic <- glm(hd ~ ., family = 'binomial', data = data)
+summary(logistic)
+```

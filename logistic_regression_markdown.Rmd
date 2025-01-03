@@ -203,7 +203,7 @@ r_squared
 The likelihood ratio test is another goodness-of-fit test that we can use for logistic regression that is similar to a p-value for an R-squared value in linear regression. This is because the likelihood ratio test compares the fit of the null model and the proposed model to see if they are significantly different and we used them to determine the pseudo r-squared. 
 $$\chi^2 = 2 \times (\text{LogLikelihood(Proposed)} - \text{LogLikelihood(Null)})$$
 
-The resulting chi-squared value is used to find if the two models are significantly different or not. The degrees of freedom is the difference in the number of parameters in the two models (LL(null) has 1.) We can obtain the degrees of freedom right from the model by getting the length of **logistic$coefficients** - 1. 
+The resulting chi-squared value is used to find if the two models are significantly different or not. The degrees of freedom is the difference in the number of parameters in the two models (LL(null) has 1.) This can also be thought of as degrees of freedom being equal to the number of additional parameters in the proposed model. We can obtain the degrees of freedom right from the model by getting the length of **logistic$coefficients** - 1. 
 ```{r likelihood ratio test}
 # pchisq gives the area up til our test value but we want the rest so we use 1 - pchisq
 p_val = 1 - pchisq(2*(ll_proposed - ll_null), df = (length(logistic$coefficients)- 1))
